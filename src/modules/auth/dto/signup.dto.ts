@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, IsStrongPassword, Length, MinLength, registerDecorator, ValidateIf, ValidationOptions } from "class-validator";
+import { IsEmail, IsNotEmpty, IsNumber, IsOptional, IsString, IsStrongPassword, Length, Matches, MinLength, registerDecorator, ValidateIf, ValidationOptions } from "class-validator";
 import { IsMatch } from "src/common";
 
 export class LoginBodyDTO
@@ -25,19 +25,20 @@ export class SignupBodyDTO extends LoginBodyDTO {
     confirmPassword: string;
 }
 
-export class ConfirmEmailBodyDTO
-{
-    @IsEmail()
-    email:string;
-    @IsString()
-    otp:string;
-}
-
 export class ResendConfirmEmailBodyDTO
 {
     @IsEmail()
     email:string;
 }
+
+export class ConfirmEmailBodyDTO extends ResendConfirmEmailBodyDTO
+{
+    @Matches(/^\d{6}$/)
+    @IsString()
+    code:string;
+}
+
+
 
 export class SendForgotPasswordBodyDTO extends ResendConfirmEmailBodyDTO
 {

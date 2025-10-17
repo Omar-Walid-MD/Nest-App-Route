@@ -1,22 +1,23 @@
 import { EventEmitter } from "node:events";
-import { sendEmail } from "../email/send.email";
-import { verifyEmailTemplate } from "../email/templates/verify.email.template";
+import { sendEmail } from "./send.email";
+import { verifyEmailTemplate } from "./templates/verify.email.template";
 import Mail from "nodemailer/lib/mailer";
+import { OtpEnum } from "src/common/enums";
 export const emailEvent = new EventEmitter();
 
 
 interface IOTPEmail extends Mail.Options {
-    otp: number;
+    otp: string;
 }
 
-emailEvent.on("confirmEmail",async(data: IOTPEmail)=>{
+emailEvent.on(OtpEnum.ConfirmEmail,async(data: IOTPEmail)=>{
 
     try {
-        data.subject = "Confirm Email";
+        data.subject = OtpEnum.ConfirmEmail;
         data.html = verifyEmailTemplate({
             otp: data.otp,
-            title: "Confirm Email"
-        })
+            title: data.subject
+        });
         await sendEmail(data);
 
     } catch (error) {
@@ -25,13 +26,13 @@ emailEvent.on("confirmEmail",async(data: IOTPEmail)=>{
 
 })
 
-emailEvent.on("sendResetPassword",async(data: IOTPEmail)=>{
+emailEvent.on(OtpEnum.ResetPassword,async(data: IOTPEmail)=>{
 
     try {
-        data.subject = "Reset password";
+        data.subject = OtpEnum.ResetPassword;
         data.html = verifyEmailTemplate({
             otp: data.otp,
-            title: "Reset password"
+            title: data.subject
         })
         await sendEmail(data);
 

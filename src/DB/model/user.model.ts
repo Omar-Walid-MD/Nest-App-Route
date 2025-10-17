@@ -1,6 +1,7 @@
 import { MongooseModule, Prop, Schema, SchemaFactory, Virtual } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { GenderEnum, generateHash, ProviderEnum } from "src/common";
+import { GenderEnum, generateHash, ProviderEnum, RoleEnum } from "src/common";
+import { OtpDocument } from "./otp.model";
 
 @Schema({
     strictQuery:true,
@@ -58,11 +59,23 @@ export class User
 
     @Prop({type:String, enum: ProviderEnum, default: ProviderEnum.SYSTEM})
     provider: ProviderEnum;
+
+    @Prop({type:String, enum:RoleEnum, default: RoleEnum.user})
+    role: RoleEnum
+
+    @Virtual()
+    otp: OtpDocument[];
 }
 
 
 const userSchema = SchemaFactory.createForClass(User);
 export type UserDocument = HydratedDocument<User>;
+
+userSchema.virtual("otp",{
+    localField: "_id",
+    foreignField: "createdBy",
+    ref: "Otp"
+})
 
 userSchema.pre("save", async function(next){
     if(this.isModified("password"))

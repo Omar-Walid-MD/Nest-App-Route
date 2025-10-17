@@ -1,6 +1,8 @@
 import { Body, Controller, HttpCode, HttpException, HttpStatus, ParseIntPipe, Patch, Post, Query, Redirect, UsePipes, ValidationPipe } from "@nestjs/common";
 import { AuthenticationService } from "./auth.service";
-import { ConfirmEmailBodyDTO, LoginBodyDTO, ResetForgotPasswordBodyDTO, SendForgotPasswordBodyDTO, SignupBodyDTO, VerifyForgotPasswordBodyDTO } from "./dto/signup.dto";
+import { ConfirmEmailBodyDTO, LoginBodyDTO, ResendConfirmEmailBodyDTO, ResetForgotPasswordBodyDTO, SendForgotPasswordBodyDTO, SignupBodyDTO, VerifyForgotPasswordBodyDTO } from "./dto/signup.dto";
+import { LoginCredentialsResponse } from "src/common";
+import { LoginResponse } from "./entities/auth.entity";
 
 
 
@@ -23,7 +25,7 @@ export class AuthenticationController
 
     @HttpCode(HttpStatus.OK)
     @Post("/login")
-    async login(@Body() body: LoginBodyDTO)
+    async login(@Body() body: LoginBodyDTO): Promise<LoginResponse>
     {
         const data = await this.authenticationService.login(body);
         return {message:"Done",data};
@@ -39,7 +41,7 @@ export class AuthenticationController
 
     @HttpCode(HttpStatus.OK)
     @Patch("/resend-confirm-email")
-    async resendConfirmEmail(@Body() body: ConfirmEmailBodyDTO)
+    async resendConfirmEmail(@Body() body: ResendConfirmEmailBodyDTO)
     {
         await this.authenticationService.resendConfirmEmail(body);
         return {message:"Done"};

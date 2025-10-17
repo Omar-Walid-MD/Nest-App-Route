@@ -1,12 +1,14 @@
 import { Module } from "@nestjs/common";
 import { AuthenticationController } from "./auth.controller";
 import { AuthenticationService } from "./auth.service";
-import { UserModel, UserRepository } from "src/DB";
+import { OtpModel, OtpRepository, TokenModel, TokenRepository, UserModel, UserRepository } from "src/DB";
+import { SharedAuthenticationModule } from "src/common/modules/auth.module";
+import { SecurityService } from "src/common";
 
 @Module({
-  imports: [UserModel],
-  exports: [AuthenticationService],
+  imports: [SharedAuthenticationModule, OtpModel],
+  exports: [],
   controllers: [AuthenticationController],
-  providers: [AuthenticationService, UserRepository],
+  providers: [AuthenticationService, OtpRepository, SecurityService],
 })
 export class AuthenticationModule {}

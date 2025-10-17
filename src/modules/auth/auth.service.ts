@@ -1,22 +1,37 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectModel } from "@nestjs/mongoose";
-import { Model } from "mongoose";
-import { compareHash, generateHash, IUser, ProviderEnum } from "src/common";
+import { compareHash, generateHash, IUser, LoginCredentialsResponse, OtpEnum, ProviderEnum } from "src/common";
 import { User, UserDocument } from "src/DB/model";
 import { ConfirmEmailBodyDTO, LoginBodyDTO, ResendConfirmEmailBodyDTO, ResetForgotPasswordBodyDTO, SendForgotPasswordBodyDTO, SignupBodyDTO, VerifyForgotPasswordBodyDTO } from "./dto/signup.dto";
-import { UserRepository } from "src/DB";
-import { createLoginCredentials } from "src/common/utils/security/token.security";
+import { OtpRepository, UserRepository } from "src/DB";
+// import { createLoginCredentials } from "src/common/utils/security/token.service";
 import { OAuth2Client, TokenPayload } from "google-auth-library";
-import { generateNumberOtp } from "src/common/utils/otp";
-import { emailEvent } from "src/common/events/email.events";
+import { createNumericalOtp } from "src/common/utils";
+import { emailEvent } from "src/common/utils/email/email.event";
+import { Types } from "mongoose";
+import { TokenService } from "src/common/utils/security/token.service";
 
 @Injectable()
 export class AuthenticationService
 {
     private users: IUser[] = [];
     constructor(
-        private readonly userRepository:UserRepository
+        private readonly userRepository:UserRepository,
+        private readonly otpRepository:OtpRepository,
+        private readonly tokenService: TokenService
     ){}
+
+    private async createConfirmEmailOtp(userId: Types.ObjectId)
+    {
+        await this.otpRepository.create({
+            data: [{
+                code: createNumericalOtp(),
+                expiredAt: new Date(Date.now()+2*60*1000),
+                createdBy: userId,
+                type: OtpEnum.ConfirmEmail
+
+            }]
+        });
+    }
 
     async signup(data:SignupBodyDTO): Promise<string>
     {
@@ -24,19 +39,17 @@ export class AuthenticationService
         const checkUserExist = await this.userRepository.findOne({
             filter: {email}
         });
+
         if(checkUserExist)
         {
             throw new ConflictException("Email already exists");
         }
 
-        const otp = generateNumberOtp();
-
         const [user] = await this.userRepository.create({
             data: [{
                 username,
                 email,
-                password,
-                confirmEmailOtp: await generateHash(String(otp))
+                password
             }]
         });
 
@@ -45,20 +58,19 @@ export class AuthenticationService
             throw new BadRequestException("Failed to signup this account. Please try again later");
         }
 
-        emailEvent.emit("confirmEmail",{
-            to: email,
-            otp
-        });
+        await this.createConfirmEmailOtp(user._id);
 
         return "Done";
     }
 
-    login = async (data: LoginBodyDTO): Promise<{access_token:string;refresh_token:string;}> =>
-    {    
+    login = async (data: LoginBodyDTO): Promise<LoginCredentialsResponse> =>
+    {
+        const {email, password} = data;
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
+                email,
                 provider: ProviderEnum.SYSTEM,
+                confirmEmail: {$exists:true}
             }
         });
 
@@ -66,21 +78,14 @@ export class AuthenticationService
         {
             throw new NotFoundException("Invalid Login data");
         }
-
-        if(!user.confirmEmail)
-        {
-            throw new BadRequestException("Please verify your account first");
-        }
         
-        if(!await compareHash(data.password,user.password))
+        if(!await compareHash(password,user.password))
         {
             throw new NotFoundException("Invalid Login data");
         }
-
-        
-        const credentials = await createLoginCredentials(user as UserDocument);
-        return credentials;
-        
+ 
+      
+        return await this.tokenService.createLoginCredentials(user as UserDocument);
 
     };
 
@@ -118,9 +123,7 @@ export class AuthenticationService
             throw new NotFoundException("Not registered account or registered with another provider");
         }
 
-        const credentials = await createLoginCredentials(user as UserDocument);
-
-        return credentials;
+        return await this.tokenService.createLoginCredentials(user as UserDocument);
     }
 
     signupWithGmail = async (data:any): Promise<{access_token:string;refresh_token:string;}> => {
@@ -152,44 +155,39 @@ export class AuthenticationService
 
         if(!newUser) throw new BadRequestException("Faile to signup with Gmail. Please try again later.");
 
-        const credentials = await createLoginCredentials(newUser);
-
-        return credentials;
+        return await this.tokenService.createLoginCredentials(newUser);
     }
 
 
     confirmEmail = async (data: ConfirmEmailBodyDTO): Promise<string> =>
     {
+        const {email, code} = data;
+
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
-                confirmEmail: {
+                email,
+                confirmedAt: {
                     $exists: false
-                },
-                confirmEmailOtp: {
-                    $exists: true
                 }
+            },
+            options: {
+                populate: [{path:"otp",match:{type:OtpEnum.ConfirmEmail}}]
             }
         });
 
-        if(!user) throw new NotFoundException("Invalid account or already verified");
+        if(!user) throw new NotFoundException("Failed to find matching account");
 
-
-        if(!await compareHash(data.otp,String(user.confirmEmailOtp)))
+        if(!user.otp?.length || !(await compareHash(code,user.otp[0].code)))
         {
-
-            throw new ConflictException("Invalid confirmation code");
+            throw new BadRequestException("Invalid OTP");
         }
-
-        const updatedUser = await this.userRepository.updateOne({
-            filter: {email:data.email},
-            update: {
-                confirmEmail: new Date(),
-                $unset: {confirmEmailOtp: true}
-            }
+        
+        user.confirmEmail = new Date();
+        await user.save();
+        await this.otpRepository.deleteOne({
+            filter:{_id:user.otp[0]._id}
         });
 
-        if(!updatedUser) throw new BadRequestException("Fail to confirm user email");
 
         return "Done";
 
@@ -198,44 +196,35 @@ export class AuthenticationService
 
     resendConfirmEmail = async (data: ResendConfirmEmailBodyDTO) => {
 
-
+        const {email} = data;
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
+                email,
                 confirmedAt: {
                     $exists: false
-                },
-                confirmEmailOtp: {
-                    $exists: true
                 }
+            },
+            options: {
+                populate: [{path:"otp",match:{type:OtpEnum.ConfirmEmail}}]
             }
         });
 
-        if(!user) throw new NotFoundException("Invalid account or already verified");
+        if(!user) throw new NotFoundException("Failed to find matching account");
 
-        const otp = generateNumberOtp();
+        if(user.otp?.length) throw new NotFoundException("Sorry we cannot create new OTP while there is still a valid OTP");
 
-        await this.userRepository.updateOne({
-            filter: {email:data.email},
-            update: {
-                confirmEmailOtp: await generateHash(String(otp))
-            }
-        });
-
-        emailEvent.emit("confirmEmail",{
-            to: data.email,
-            otp
-        });
+        await this.createConfirmEmailOtp(user._id);
 
         return "Done";
 
     };
 
     sendForgotPasswordCode = async (data: SendForgotPasswordBodyDTO): Promise<string> =>
-    {    
+    {
+        const {email} = data;
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
+                email,
                 provider: ProviderEnum.SYSTEM,
                 confirmedAt: {$exists: true}
             }
@@ -246,34 +235,31 @@ export class AuthenticationService
             throw new NotFoundException("Invalid account");
         }
 
-        const otp = generateNumberOtp();
+        await this.otpRepository.create({
+            data: [{
+                code: createNumericalOtp(),
+                expiredAt: new Date(Date.now()+2*60*1000),
+                createdBy: user._id,
+                type: OtpEnum.ResetPassword
 
-        const result = await this.userRepository.updateOne({
-            filter: {email:data.email},
-            update: {
-                resetPasswordOtp: await generateHash(String(otp))
-            }
+            }]
         });
-
-        if(!result.matchedCount)
-        {
-            throw new BadRequestException("Failed to send reset code. Please try again later");
-        }
-
-        emailEvent.emit("sendResetPassword",{to:data.email,otp})
 
         return "Done";
 
     };
 
     verifyForgotPasswordCode = async (data: VerifyForgotPasswordBodyDTO): Promise<string> =>
-    {    
+    {
+        const {code, email} = data;
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
+                email,
                 provider: ProviderEnum.SYSTEM,
                 confirmedAt: {$exists: true},
-                resetPasswordOtp: {$exists: true}
+            },
+            options: {
+                populate: [{path:"otp",match:{type:OtpEnum.ResetPassword}}]
             }
         });
 
@@ -282,19 +268,20 @@ export class AuthenticationService
             throw new NotFoundException("Invalid account");
         }
 
-        if(!await compareHash(data.otp, user.resetPasswordOtp as string))
+        if(!user.otp?.length || !(await compareHash(code,user.otp[0].code)))
         {
-            throw new ConflictException("Invalid OTP");
+            throw new BadRequestException("Invalid OTP");
         }
 
         return "Done";
     };
 
     resetForgotPassword = async (data: ResetForgotPasswordBodyDTO): Promise<string> =>
-    {    
+    {
+        const {code, email, password} = data;
         const user = await this.userRepository.findOne({
             filter: {
-                email: data.email,
+                email,
                 provider: ProviderEnum.SYSTEM,
                 confirmedAt: {$exists: true},
                 resetPasswordOtp: {$exists: true}
@@ -306,17 +293,21 @@ export class AuthenticationService
             throw new NotFoundException("Invalid account");
         }
 
-        if(!await compareHash(data.otp, user.resetPasswordOtp as string))
+        if(!user.otp?.length || !(await compareHash(code,user.otp[0].code)))
         {
-            throw new ConflictException("Invalid OTP");
+            throw new BadRequestException("Invalid OTP");
         }
+        
+        await this.otpRepository.deleteOne({
+            filter:{_id:user.otp[0]._id}
+        });
 
         const result = await this.userRepository.updateOne({
-            filter: {email:data.email},
+            filter: {email},
             update: {
                 $unset: {resetPasswordOtp: true},
                 changeCredentialsTime: new Date(),
-                password: await generateHash(data.password)
+                password: await generateHash(password)
             }
         });
 
