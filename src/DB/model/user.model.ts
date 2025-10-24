@@ -1,6 +1,6 @@
 import { MongooseModule, Prop, Schema, SchemaFactory, Virtual } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import { GenderEnum, generateHash, ProviderEnum, RoleEnum } from "src/common";
+import { GenderEnum, generateHash, IUser, LanguageEnum, ProviderEnum, RoleEnum } from "src/common";
 import { OtpDocument } from "./otp.model";
 
 @Schema({
@@ -9,7 +9,7 @@ import { OtpDocument } from "./otp.model";
     toObject:{virtuals:true},
     toJSON: {virtuals:true}
 })
-export class User
+export class User implements IUser
 {
     @Prop({type:String,required:true,minlength:2,maxlength:25,trim:true})
     firstName: string;
@@ -63,8 +63,13 @@ export class User
     @Prop({type:String, enum:RoleEnum, default: RoleEnum.user})
     role: RoleEnum
 
+    @Prop({type:String})
+    profileImage: string;
+
     @Virtual()
     otp: OtpDocument[];
+
+    preferredLanguage: LanguageEnum;
 }
 
 

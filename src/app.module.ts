@@ -8,6 +8,8 @@ import { UserModule } from './modules/user/user.module';
 import { CategoryModule } from './modules/category/category.module';
 import { MongooseModule } from '@nestjs/mongoose';
 import { SharedAuthenticationModule } from './common/modules/auth.module';
+import { S3Service } from './common';
+import { BrandModule } from './modules/brand/brand.module';
 @Module({
   imports: [
     ConfigModule.forRoot({envFilePath:resolve("./config/.env.dev"),isGlobal:true}),
@@ -15,9 +17,10 @@ import { SharedAuthenticationModule } from './common/modules/auth.module';
     SharedAuthenticationModule,
     AuthenticationModule,
     UserModule,
-    CategoryModule
+    CategoryModule,
+    BrandModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, S3Service],
 })
 export class AppModule {}

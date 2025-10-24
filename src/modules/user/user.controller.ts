@@ -1,28 +1,47 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, MaxFileSizeValidator, ParseFilePipe, Patch, UploadedFile, UploadedFiles, UseInterceptors } from "@nestjs/common";
 import { UserService } from "./user.service";
-import { IUser, RoleEnum, User } from "src/common";
+import { cloudFileUpload, fileValidation, IUser, localFileUpload, RoleEnum, successResponse, User } from "src/common";
+import type { IResponse } from "src/common";
 import { Auth } from "src/common/decorators/auth.decorator";
 import type { UserDocument } from "src/DB";
+import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor, NoFilesInterceptor } from "@nestjs/platform-express";
+import { StorageEnum } from "src/common/enums/multer.enum";
+import { ProfileResponse } from "./entities/user.entity";
 
 @Controller("user")
 
 export class UserController {
     constructor(private readonly userService:UserService){}
 
-    @Get()
-    allUsers():{message:string,data:{users:IUser[]}}
-    {
-        const users: IUser[] = this.userService.allUsers()
-        return {message:"Done",data:{users}}
-    }
-
     @Auth([RoleEnum.admin, RoleEnum.user])
     @Get()
-    profile(
+    async profile(
         @User() user: UserDocument
-    )
+    ): Promise<IResponse<ProfileResponse>>
     {
-        console.log({user});
-        return {message:"Done"};
+        return successResponse<ProfileResponse>({data:{profile:user}});
     }
+
+    @UseInterceptors(
+        FileInterceptor("profileImage",cloudFileUpload({
+            storageApproach:StorageEnum.disk,
+            validation:fileValidation.image,
+            fileSize:2
+        }))
+    )
+    @Patch("profile-image")
+    @Auth([RoleEnum.user])
+    async profileImage(
+        @User() user: UserDocument,
+        @UploadedFile(new ParseFilePipe({
+            validators: [new MaxFileSizeValidator({maxSize:2*1024*1024})],
+            fileIsRequired: true
+        })) file: Express.Multer.File
+    ): Promise<IResponse<ProfileResponse>>
+    {
+        const profile = await this.userService.profileImage(file,user);
+        return successResponse<ProfileResponse>({data:{profile}});
+    }
+    
+
 }

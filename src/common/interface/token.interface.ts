@@ -2,6 +2,19 @@ import { JwtPayload } from "jsonwebtoken";
 import { UserDocument } from "src/DB";
 import type {Request} from "express";
 import { TokenEnum } from "../enums";
+import { Types } from "mongoose";
+import { IUser } from "./user.interface";
+
+export interface IToken
+{
+    _id?: Types.ObjectId;
+    jti: string;
+    expiredAt: Date;
+    createdBy: Types.ObjectId | IUser;
+
+    createdAt?: Date;
+    updatedAt?: Date;
+}
 
 export interface ICredentials
 {
@@ -12,4 +25,9 @@ export interface IAuthRequest extends Request
 {
     credentials: ICredentials;
     tokenType?: TokenEnum;
+}
+
+export interface IToken
+{
+    
 }

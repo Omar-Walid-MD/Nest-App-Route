@@ -82,7 +82,13 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
         options?: QueryOptions<TDocument> | undefined;
         page?: number | "all";
         size?: number;
-    }): Promise<Lean<TDocument>[] | TDocument[] | [] | any> {
+    }): Promise<{
+        docsCount?: number;
+        limit?: number;
+        pages?: number;
+        currentPage?: number|undefined;
+        result: TDocument[] | Lean<TDocument>[];
+    }> {
         let docsCount: number | undefined = undefined;
         let pages: number | undefined = undefined;
 
@@ -94,8 +100,6 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
             docsCount = await this.model.countDocuments(filter);
             pages = Math.ceil(docsCount / options.limit);
         }
-
-        console.log(await this.model.estimatedDocumentCount());
 
         const result = await this.find({ filter, select, options });
         return { docsCount, limit: options.limit, pages, currentPage: page !== "all" ? page : undefined, result };
@@ -162,7 +166,7 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
     async findOneAndUpdate({
         filter,
         update,
-        options
+        options={new:true}
 
     }: {
         filter: RootFilterQuery<TRawDocument>;
@@ -170,6 +174,13 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
         options?: QueryOptions<TDocument> | null;
 
     }): Promise<TDocument | Lean<TDocument> | null> {
+
+        if (Array.isArray(update)) {
+            return await this.model.findOneAndUpdate(filter,
+                [...update, { $set: { __v: { $add: ["$__v", 1] } } }],
+                options);
+        }
+        
         return await this.model.findOneAndUpdate(filter,
             { ...update, $inc: { __v: 1 } },
             options);
