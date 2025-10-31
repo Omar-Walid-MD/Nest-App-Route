@@ -137,8 +137,7 @@ export class TokenService
                 }
             }) as JwtPayload;
         
-        
-            if(!decoded?.sub || !decoded?.iat)
+            if(!decoded?._id || !decoded?.iat)
             {
                 throw new BadRequestException("Invalid Token Payload");
             }

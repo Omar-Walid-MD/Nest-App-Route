@@ -1,8 +1,8 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateBrandDto } from './dto/create-brand.dto';
 import { BrandDocument, BrandRepository, UserDocument } from 'src/DB';
-import { FolderEnum, S3Service } from 'src/common';
-import { GetAllDto, UpdateBrandDto } from './dto/update-brand.dto';
+import { FolderEnum, GetAllDto, S3Service } from 'src/common';
+import { UpdateBrandDto } from './dto/update-brand.dto';
 import { Types } from 'mongoose';
 import { Lean } from 'src/DB/repository/database.repository';
 // import { UpdateBrandDto } from './dto/update-brand.dto';

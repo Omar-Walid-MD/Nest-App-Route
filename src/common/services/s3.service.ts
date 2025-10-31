@@ -90,7 +90,7 @@ export class S3Service
     }
 
     uploadFiles = async({
-        storageApproach = StorageEnum.memory,
+        storageApproach = StorageEnum.disk,
         Bucket = process.env.AWS_BUCKET_NAME as string,
         ACL = "private",
         path = "general",

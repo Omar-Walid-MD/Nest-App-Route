@@ -15,30 +15,6 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  // @Get("")
-  // app.get("/upload/*path",async (req: Request, res: Response): Promise<void>=>{
-  //       const {downloadName, download = "false"} = req.query as {
-  //           downloadName?: string;
-  //           download?: string;
-  //       };
-  //       const {path} = req.params as unknown as {path:string[]}; 
-  //       const Key = path.join("/");
-
-  //       const s3Response = await getFile({Key});
-
-  //       if(!s3Response?.Body) throw new BadRequestException("Failed to fetch this asset");
-
-  //       res.setHeader("Cross-Origin-Resource-Policy","cross-origin");
-  //       res.setHeader("Content-type",`${s3Response.ContentType || "application/octet-stream"}`);
-        
-  //       if(download === "true")
-  //       {
-  //           res.setHeader("Content-Disposition", `attachment; filename="${downloadName || Key.split("/").pop()}"`); // only apply it for  download
-  //       }
-        
-  //       return await createS3WriteStreamPipe(s3Response.Body as NodeJS.ReadableStream, res);
-  //   });
-
     @Get("/upload/pre-signed/*path")
     async getPresignedAssetUrl(
       @Query() query: {download?:"true"|"false"; filename?:string},

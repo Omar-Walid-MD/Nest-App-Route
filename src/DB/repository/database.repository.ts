@@ -143,7 +143,7 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
         }
 
         return await this.model.updateOne(filter,
-            { ...update, $inc: { __v: 1 } },
+            { $inc: { __v: 1 }, ...update },
             options);
     }
 
@@ -159,7 +159,7 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
 
     }): Promise<TDocument | Lean<TDocument> | null> {
         return await this.model.findByIdAndUpdate(id,
-            { ...update, $inc: { __v: 1 } },
+            { $inc: { __v: 1 }, ...update },
             options);
     }
 
@@ -182,7 +182,7 @@ export abstract class DatabaseRepository<TRawDocument, TDocument=HydratedDocumen
         }
         
         return await this.model.findOneAndUpdate(filter,
-            { ...update, $inc: { __v: 1 } },
+            { $inc: { __v: 1 }, ...update },
             options);
     }
 

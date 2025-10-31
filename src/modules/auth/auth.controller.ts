@@ -12,7 +12,7 @@ export class AuthenticationController
     constructor(private readonly authenticationService: AuthenticationService){}
 
     @HttpCode(201)
-    @Post("signup")
+    @Post("/signup")
     async signup(
         @Body()
         body: SignupBodyDTO

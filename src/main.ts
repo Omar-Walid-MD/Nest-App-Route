@@ -8,6 +8,8 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const port = process.env.PORT ?? 3000;
 
+  app.enableCors();
+  app.use("/order/webhook", express.raw({type:"application/json"}));
   app.use("/uploads",express.static(path.resolve("./uploads")));
   app.useGlobalPipes(
     new ValidationPipe({

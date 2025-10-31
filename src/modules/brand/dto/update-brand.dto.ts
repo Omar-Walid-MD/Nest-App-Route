@@ -11,26 +11,6 @@ export class UpdateBrandDto extends PartialType(CreateBrandDto)
 
 }
 
-export class GetAllDto
-{
-    @Type(()=>Number)
-    @IsPositive()
-    @IsNumber()
-    @IsOptional()
-    page?: number;
-
-    @Type(()=>Number)
-    @IsPositive()
-    @IsNumber()
-    @IsOptional()
-    size?: number;
-
-    @IsNotEmpty()
-    @IsString()
-    @IsOptional()
-    search: string;
-}
-
 export class BrandParamsDto
 {
     @IsMongoId()

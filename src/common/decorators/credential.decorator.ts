@@ -8,12 +8,12 @@ export const User = createParamDecorator(
             case "http":
                 req = context.switchToHttp().getRequest();
                 break;
-            case "rpc":
-                const RPC_ctx = context.switchToRpc();
-                break;
-            case "ws":
-                const WS_ctx = context.switchToWs();
-                break;
+            // case "rpc":
+            //     const RPC_ctx = context.switchToRpc();
+            //     break;
+            // case "ws":
+            //     const WS_ctx = context.switchToWs();
+            //     break;
 
             default:
                 break;

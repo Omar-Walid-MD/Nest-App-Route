@@ -8,18 +8,20 @@ import { FileFieldsInterceptor, FileInterceptor, FilesInterceptor, NoFilesInterc
 import { StorageEnum } from "src/common/enums/multer.enum";
 import { ProfileResponse } from "./entities/user.entity";
 
+@Auth([])
 @Controller("user")
 
 export class UserController {
     constructor(private readonly userService:UserService){}
 
-    @Auth([RoleEnum.admin, RoleEnum.user])
+    
     @Get()
     async profile(
         @User() user: UserDocument
     ): Promise<IResponse<ProfileResponse>>
     {
-        return successResponse<ProfileResponse>({data:{profile:user}});
+        const profile = await this.userService.profile(user);
+        return successResponse<ProfileResponse>({data:{profile}});
     }
 
     @UseInterceptors(
@@ -30,7 +32,6 @@ export class UserController {
         }))
     )
     @Patch("profile-image")
-    @Auth([RoleEnum.user])
     async profileImage(
         @User() user: UserDocument,
         @UploadedFile(new ParseFilePipe({

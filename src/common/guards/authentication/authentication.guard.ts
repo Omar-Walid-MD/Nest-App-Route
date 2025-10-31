@@ -23,7 +23,7 @@ export class AuthenticationGuard implements CanActivate
         {
             case "http":
                 const HTTP_ctx = context.switchToHttp();
-                const req = HTTP_ctx.getRequest();
+                req = HTTP_ctx.getRequest();
                 authorization = req.headers.authorization;
                 break;
             case "rpc":

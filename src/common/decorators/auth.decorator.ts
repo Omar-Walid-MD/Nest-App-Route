@@ -7,6 +7,7 @@ import { AuthorizationGuard } from "../guards/authorization/authorization.guard"
 
 export function Auth(roles: RoleEnum[], type: TokenEnum = TokenEnum.access)
 {
+    if(!roles.length) roles = Object.values(RoleEnum);
     return applyDecorators(
         Token(type),
         Roles(roles),
