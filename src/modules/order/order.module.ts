@@ -5,10 +5,11 @@ import { CartModel, CartRepository, OrderModel, OrderRepository, ProductModel } 
 import { ProductRepository } from 'src/DB/repository/product.repository';
 import { CartService } from '../cart/cart.service';
 import { PaymentService } from 'src/common';
+import { RealtimeGateway } from '../gateway/gateway';
 
 @Module({
   imports: [ProductModel, CartModel, OrderModel],
   controllers: [OrderController],
-  providers: [OrderService, CartRepository, ProductRepository, OrderRepository, CartService, PaymentService],
+  providers: [OrderService, CartRepository, ProductRepository, OrderRepository, CartService, PaymentService, RealtimeGateway],
 })
 export class OrderModule {}

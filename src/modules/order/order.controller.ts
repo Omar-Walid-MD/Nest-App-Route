@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UsePipes, ValidationPipe, Req, Query } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { CreateOrderDto, OrderParamDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
-import { Auth, IResponse, RoleEnum, successResponse, User } from 'src/common';
+import { Auth, GetAllDto, GetAllResponse, IOrder, IResponse, RoleEnum, successResponse, User } from 'src/common';
 import type { UserDocument } from 'src/DB';
 import { OrderResponse } from './entities/order.entity';
 import { endpoint } from './authorization';
@@ -51,6 +51,15 @@ export class OrderController {
   ): Promise<IResponse<OrderResponse>> {
     const order = await this.orderService.cancel(params.orderId, user);
     return successResponse<OrderResponse>({data:{order}});
+  }
+
+  @Get()
+  async findAll(
+    @Query() query: GetAllDto
+  ): Promise<IResponse<GetAllResponse<IOrder>>>
+  {
+    const result = await this.orderService.findAll(query);
+    return successResponse<GetAllResponse<IOrder>>({data:{result}});
   }
   
 }

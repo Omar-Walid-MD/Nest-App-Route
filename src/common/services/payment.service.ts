@@ -57,7 +57,7 @@ export class PaymentService {
         return paymentMethod;
     }
 
-    async retreiveIntent(id: string): Promise<Stripe.Response<Stripe.PaymentIntent>>
+    async retreivePaymentIntent(id: string): Promise<Stripe.Response<Stripe.PaymentIntent>>
     {
         const intent = await this.stripe.paymentIntents.retrieve(id);
         return intent;
@@ -65,7 +65,7 @@ export class PaymentService {
 
     async confirmPaymentIntent(id: string): Promise<Stripe.Response<Stripe.PaymentIntent>>
     {
-        const intent = await this.retreiveIntent(id);
+        const intent = await this.retreivePaymentIntent(id);
         if(intent?.status !== "requires_confirmation")
         {
             throw new NotFoundException("Failed to find matching payment intent");
@@ -76,7 +76,7 @@ export class PaymentService {
 
     async refund(id: string): Promise<Stripe.Response<Stripe.Refund>>
     {
-        const intent = await this.retreiveIntent(id);
+        const intent = await this.retreivePaymentIntent(id);
         if(intent?.status !== "succeeded")
         {
             throw new NotFoundException("Failed to find matching payment intent");

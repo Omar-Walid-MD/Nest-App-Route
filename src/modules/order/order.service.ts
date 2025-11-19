@@ -3,12 +3,14 @@ import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
 import { CartRepository, CouponRepository, OrderDocument, OrderProduct, OrderRepository, ProductDocument, UserDocument } from 'src/DB';
 import { ProductRepository } from 'src/DB/repository/product.repository';
-import { CouponEnum, IOrderProduct, OrderStatusEnum, OrderStatusNameEnum, PaymentEnum, PaymentService } from 'src/common';
+import { CouponEnum, GetAllDto, GetAllGraphDto, IOrderProduct, OrderStatusEnum, OrderStatusNameEnum, PaymentEnum, PaymentService } from 'src/common';
 import { randomUUID } from 'crypto';
 import { CartService } from '../cart/cart.service';
 import { Types } from 'mongoose';
 import Stripe from 'stripe';
 import type { Request } from 'express';
+import { RealtimeGateway } from '../gateway/gateway';
+import { Lean } from 'src/DB/repository/database.repository';
 
 @Injectable()
 export class OrderService {
@@ -19,7 +21,8 @@ export class OrderService {
     private readonly cartRepository: CartRepository,
     private readonly cartService: CartService,
     private readonly couponRepository: CouponRepository,
-    private readonly paymentService: PaymentService
+    private readonly paymentService: PaymentService,
+    private readonly realtimeGateway :RealtimeGateway
 
   ){}
 
@@ -121,14 +124,19 @@ export class OrderService {
       throw new BadRequestException("Failed to create this order instance");
     }
 
+    const stockProducts: {productId: Types.ObjectId; stock: number}[] = []
+
     for (const product of cart.products) {
-      await this.productRepository.updateOne({
+      const updatedProduct = await this.productRepository.findOneAndUpdate({
         filter: {_id: product.productId,stock: {$gte:product.quantity}},
         update: {
           $inc: {__v:1, stock:-product.quantity}
         }
-      });
+      }) as ProductDocument;
+      stockProducts.push({productId: updatedProduct._id, stock: updatedProduct?.stock});
     }
+
+    this.realtimeGateway.changeProductStock(stockProducts);
 
     await this.cartService.remove(user);
 
@@ -181,24 +189,24 @@ export class OrderService {
       })
     });
 
-    const method = await this.paymentService.createPaymentMethod({
+    const paymentMethod = await this.paymentService.createPaymentMethod({
       type: "card",
       card: {
         token:"tok_visa"
       }
     })
 
-    const intent = await this.paymentService.createPaymentIntent({
+    const paymentIntent = await this.paymentService.createPaymentIntent({
       amount: order.subtotal*100,
       currency: "egp",
-      payment_method: method.id,
+      payment_method: paymentMethod.id,
       automatic_payment_methods: {
         enabled: true,
         allow_redirects: "never"
       }
     });
 
-    order.paymentIntent = intent.id;
+    order.paymentIntent = paymentIntent.id;
     await order.save();  
 
     return session;
@@ -248,6 +256,25 @@ export class OrderService {
     }
 
     return order as OrderDocument;
+  }
+
+  async findAll(data: GetAllGraphDto, archive: boolean=false): Promise<{
+        docsCount?: number;
+        limit?: number;
+        pages?: number;
+        currentPage?: number|undefined;
+        result: OrderDocument[] | Lean<OrderDocument>[];
+    }> {
+    const {page,size,search} = data;
+    const result = await this.orderRepository.paginate({
+      filter: {
+        ...(archive?{paranoid:false,freezedAt:{$exists:true}}:{})
+      },
+      page,
+      size
+    })
+
+    return result;
   }
 
 }

@@ -9,3 +9,4 @@ export * from "./product.interface";
 export * from "./cart.interface";
 export * from "./order.interface";
 export * from "./coupon.interface";
+export * from "./socket.interface"

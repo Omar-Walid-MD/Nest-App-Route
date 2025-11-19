@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseInterceptors, UploadedFiles, ParseFilePipe, UsePipes, ValidationPipe, Query, Inject } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { ProductParamDto, UpdateProductAttachmentDto, UpdateProductDto } from './dto/update-product.dto';
@@ -7,12 +7,16 @@ import { Auth, cloudFileUpload, fileValidation, GetAllDto, GetAllResponse, IProd
 import { endpoint } from './authorization';
 import type { ProductDocument, UserDocument } from 'src/DB';
 import { ProductResponse } from './entities/product.entity';
+import { RedisCacheInterceptor } from 'src/common/interceptors/cache.interceptor';
 
 
 @UsePipes(new ValidationPipe({whitelist:true,forbidNonWhitelisted:true}))
+@UseInterceptors(RedisCacheInterceptor)
 @Controller('product')
 export class ProductController {
-  constructor(private readonly productService: ProductService) {}
+  constructor(
+    private readonly productService: ProductService
+  ) {}
 
   @UseInterceptors(FilesInterceptor("attachments",5,cloudFileUpload({validation:fileValidation.image,storageApproach:StorageEnum.disk})))
   @Auth(endpoint.create)
